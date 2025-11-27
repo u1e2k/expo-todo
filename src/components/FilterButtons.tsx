@@ -15,6 +15,7 @@ export const FilterButtons: React.FC<FilterButtonsProps> = ({
     { label: 'すべて', value: 'all' },
     { label: '未完了', value: 'active' },
     { label: '完了済み', value: 'completed' },
+    { label: 'プロジェクト', value: 'project' },
   ];
 
   return (

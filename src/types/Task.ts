@@ -1,5 +1,5 @@
-// ITask: Gamified TODOのタスクデータモデル
-export interface ITask {
+// Task: Gamified TODOのタスクデータモデル
+export interface Task {
   id: string;
   title: string;
   detail?: string;
@@ -16,8 +16,8 @@ export interface ITask {
   tags?: string[]; // 回復タスク、メンタルケアなどのタグ
 }
 
-// IUserStatus: ユーザーステータスデータモデル
-export interface IUserStatus {
+// UserStatus: ユーザーステータスデータモデル
+export interface UserStatus {
   currentHP: number;
   maxHP: number;
   currentMP: number;
@@ -28,16 +28,6 @@ export interface IUserStatus {
   levelSpeed: number;
   intExp: number; // INT経験値
   speedExp: number; // Speed経験値
-}
-
-// 旧Task型（互換性のため）
-export interface Task {
-  id: string;
-  title: string;
-  detail: string;
-  isCompleted: boolean;
-  createdAt: string;
-  dueDate?: string;
 }
 
 export type FilterType = 'all' | 'active' | 'completed' | 'project';

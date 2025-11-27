@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ITask } from '../types/Task';
+import { Task } from '../types/Task';
 import { useUserStatus } from './UserStatusContext';
 import {
   calculateStakedPoints,
@@ -13,18 +13,18 @@ import {
 } from '../utils/gameLogic';
 
 interface GamifiedTaskContextType {
-  tasks: ITask[];
-  addTask: (task: Partial<ITask>) => void;
-  updateTask: (id: string, updates: Partial<ITask>) => void;
+  tasks: Task[];
+  addTask: (task: Partial<Task>) => void;
+  updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   completeTask: (id: string) => void;
   toggleTask: (id: string) => void;
   promoteToProject: (id: string) => void;
   demoteToTask: (id: string) => void;
-  addSubtask: (parentId: string, subtask: Partial<ITask>) => void;
-  getTasksByType: (type: 'TASK' | 'PROJECT' | 'SUBTASK') => ITask[];
-  getActiveTasks: () => ITask[];
-  getCompletedTasks: () => ITask[];
+  addSubtask: (parentId: string, subtask: Partial<Task>) => void;
+  getTasksByType: (type: 'TASK' | 'PROJECT' | 'SUBTASK') => Task[];
+  getActiveTasks: () => Task[];
+  getCompletedTasks: () => Task[];
 }
 
 const STORAGE_KEY = '@gamified_todo:tasks';
@@ -44,7 +44,7 @@ interface GamifiedTaskProviderProps {
 }
 
 export const GamifiedTaskProvider: React.FC<GamifiedTaskProviderProps> = ({ children }) => {
-  const [tasks, setTasks] = useState<ITask[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const { userStatus, updateHP, updateMP, addXP, addIntExp, addSpeedExp } = useUserStatus();
 
   // タスクの読み込み
@@ -82,7 +82,7 @@ export const GamifiedTaskProvider: React.FC<GamifiedTaskProviderProps> = ({ chil
     }
   }, [tasks]);
 
-  const addTask = (taskData: Partial<ITask>) => {
+  const addTask = (taskData: Partial<Task>) => {
     // HPチェック：0以下なら新規タスク追加不可
     if (userStatus.currentHP <= 0) {
       alert('HPが不足しています。回復タスクを完了してください。');
@@ -92,13 +92,13 @@ export const GamifiedTaskProvider: React.FC<GamifiedTaskProviderProps> = ({ chil
     // サイズに基づいた自動判定：Largeサイズは自動的にプロジェクトとして扱う
     const taskSize = taskData.size || 'Medium';
     let taskType = taskData.type;
-    
+
     if (!taskType) {
       // typeが指定されていない場合、サイズで自動判定
       taskType = taskSize === 'Large' ? 'PROJECT' : 'TASK';
     }
 
-    const newTask: ITask = {
+    const newTask: Task = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       title: taskData.title || '新しいタスク',
       detail: taskData.detail,
@@ -120,28 +120,20 @@ export const GamifiedTaskProvider: React.FC<GamifiedTaskProviderProps> = ({ chil
     setTasks((prev) => [newTask, ...prev]);
   };
 
-  const updateTask = (id: string, updates: Partial<ITask>) => {
+  const updateTask = (id: string, updates: Partial<Task>) => {
     setTasks((prev) =>
       prev.map((task) => {
         if (task.id === id) {
           const updatedTask = { ...task, ...updates };
-          
-          // サイズがLargeに変更され、かつ子タスクがない場合はプロジェクトに自動昇格
-          if (updates.size === 'Large' && 
-              updatedTask.type === 'TASK' && 
-              updatedTask.childrenIDs.length === 0) {
+
+          // サイズがLargeに変更され、かつ明示的にTASKタイプで子タスクがない場合はプロジェクトに自動昇格
+          if (updates.size === 'Large' &&
+            updatedTask.type === 'TASK' &&
+            updatedTask.childrenIDs.length === 0) {
             updatedTask.type = 'PROJECT';
             console.log(`タスク "${updatedTask.title}" をプロジェクトに自動昇格しました（サイズ: Large）`);
           }
-          
-          // サイズがSmall/Mediumに変更され、子タスクがない場合はタスクに降格可能
-          if ((updates.size === 'Small' || updates.size === 'Medium') && 
-              updatedTask.type === 'PROJECT' && 
-              updatedTask.childrenIDs.length === 0) {
-            updatedTask.type = 'TASK';
-            console.log(`プロジェクト "${updatedTask.title}" をタスクに自動降格しました（サイズ: ${updates.size}）`);
-          }
-          
+
           // 更新時にストックポイントを再計算
           updatedTask.stakedPoints = calculateStakedPoints(updatedTask);
           return updatedTask;
@@ -210,14 +202,14 @@ export const GamifiedTaskProvider: React.FC<GamifiedTaskProviderProps> = ({ chil
           // プロジェクト完了時の追加ボーナス
           if (completedTask.type === 'PROJECT') {
             // 子タスクの報酬を合算
-            const childTasks = prev.filter((child) => 
+            const childTasks = prev.filter((child) =>
               completedTask.childrenIDs.includes(child.id)
             );
             const totalChildReward = childTasks.reduce(
               (sum, child) => sum + child.stakedPoints,
               0
             );
-            
+
             // プロジェクト完了ボーナス（子タスク報酬の20%）
             const projectBonus = Math.floor(totalChildReward * 0.2);
             addXP(projectBonus);
@@ -227,12 +219,12 @@ export const GamifiedTaskProvider: React.FC<GamifiedTaskProviderProps> = ({ chil
 
             // 短期決戦ボーナスチェック
             if (completedTask.createdAt) {
-              const projectDuration = 
-                (completedTask.completedAt!.getTime() - completedTask.createdAt.getTime()) / 
+              const projectDuration =
+                (completedTask.completedAt!.getTime() - completedTask.createdAt.getTime()) /
                 (1000 * 60 * 60 * 24); // 日数
 
-              const expectedDuration = completedTask.size === 'Large' ? 7 : 
-                                      completedTask.size === 'Medium' ? 3 : 1;
+              const expectedDuration = completedTask.size === 'Large' ? 7 :
+                completedTask.size === 'Medium' ? 3 : 1;
 
               if (projectDuration <= expectedDuration) {
                 // 短期決戦ボーナス
@@ -269,17 +261,35 @@ export const GamifiedTaskProvider: React.FC<GamifiedTaskProviderProps> = ({ chil
 
   const promoteToProject = (id: string) => {
     setTasks((prev) => {
+      const taskToPromote = prev.find((t) => t.id === id);
+      if (!taskToPromote) {
+        console.error(`❌ タスクが見つかりません: ${id}`);
+        return prev;
+      }
+
+      console.log(`📁 プロジェクト昇格開始: "${taskToPromote.title}"`);
+      console.log(`   現在のタイプ: ${taskToPromote.type}`);
+
       const updatedTasks = prev.map((task) => {
         if (task.id === id) {
-          console.log(`タスク "${task.title}" をプロジェクトに昇格します`);
-          return {
+          const promoted = {
             ...task,
             type: 'PROJECT' as const,
           };
+          console.log(`   新しいタイプ: ${promoted.type}`);
+          return promoted;
         }
         return task;
       });
-      console.log('プロジェクト昇格完了');
+
+      // 昇格後のタスクを確認
+      const afterPromotion = updatedTasks.find((t) => t.id === id);
+      console.log(`✅ プロジェクト昇格完了: type = ${afterPromotion?.type}`);
+
+      // プロジェクトタイプのタスク数を表示
+      const projectCount = updatedTasks.filter((t) => t.type === 'PROJECT' && !t.parentID).length;
+      console.log(`📊 現在のプロジェクト数: ${projectCount}`);
+
       return updatedTasks;
     });
   };
@@ -306,7 +316,7 @@ export const GamifiedTaskProvider: React.FC<GamifiedTaskProviderProps> = ({ chil
     });
   };
 
-  const addSubtask = (parentId: string, subtaskData: Partial<ITask>) => {
+  const addSubtask = (parentId: string, subtaskData: Partial<Task>) => {
     const parent = tasks.find((t) => t.id === parentId);
     if (!parent) {
       alert('親タスクが見つかりません。');
@@ -318,7 +328,7 @@ export const GamifiedTaskProvider: React.FC<GamifiedTaskProviderProps> = ({ chil
       console.log(`タスク "${parent.title}" をプロジェクトに昇格します`);
     }
 
-    const newSubtask: ITask = {
+    const newSubtask: Task = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       title: subtaskData.title || '新しいサブタスク',
       detail: subtaskData.detail,
@@ -341,7 +351,7 @@ export const GamifiedTaskProvider: React.FC<GamifiedTaskProviderProps> = ({ chil
       const updatedTasks = prev.map((task) => {
         if (task.id === parentId) {
           const newChildrenIDs = [...task.childrenIDs, newSubtask.id];
-          
+
           // 分解ボーナスチェック
           const bonus = calculateDecompositionBonus(task.size, newChildrenIDs.length);
           if (bonus > 0) {

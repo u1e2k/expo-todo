@@ -10,12 +10,12 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useGamifiedTasks } from '../context/GamifiedTaskContext';
-import { ITask } from '../types/Task';
+import { Task } from '../types/Task';
 
 type RootStackParamList = {
   GamifiedHome: undefined;
   ProjectDetail: { projectId: string };
-  GamifiedTaskForm: { task?: ITask; parentId?: string };
+  GamifiedTaskForm: { task?: Task; parentId?: string };
 };
 
 type ProjectDetailRouteProp = RouteProp<RootStackParamList, 'ProjectDetail'>;
@@ -39,7 +39,7 @@ const ProjectDetailScreen: React.FC = () => {
   const subtasks = tasks.filter((t) => project.childrenIDs.includes(t.id));
   const completedCount = subtasks.filter((t) => t.isCompleted).length;
   const totalStakedPoints = project.stakedPoints + subtasks.reduce((sum, t) => sum + t.stakedPoints, 0);
-  const completedStakedPoints = project.stakedPoints + 
+  const completedStakedPoints = project.stakedPoints +
     subtasks.filter((t) => t.isCompleted).reduce((sum, t) => sum + t.stakedPoints, 0);
 
   // プロジェクト完了ボーナスの計算
@@ -49,16 +49,16 @@ const ProjectDetailScreen: React.FC = () => {
   // 短期決戦ボーナスの判定
   const getSpeedBonusStatus = () => {
     if (!project.createdAt) return null;
-    
+
     const now = new Date();
-    const daysSinceCreation = 
+    const daysSinceCreation =
       (now.getTime() - new Date(project.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-    
-    const expectedDuration = project.size === 'Large' ? 7 : 
-                            project.size === 'Medium' ? 3 : 1;
-    
+
+    const expectedDuration = project.size === 'Large' ? 7 :
+      project.size === 'Medium' ? 3 : 1;
+
     const remainingDays = expectedDuration - daysSinceCreation;
-    
+
     if (daysSinceCreation <= expectedDuration) {
       return {
         eligible: true,
@@ -66,7 +66,7 @@ const ProjectDetailScreen: React.FC = () => {
         bonus: Math.floor(childTasksReward * 0.3),
       };
     }
-    
+
     return { eligible: false, remainingDays: 0, bonus: 0 };
   };
 
@@ -105,7 +105,7 @@ const ProjectDetailScreen: React.FC = () => {
     ]);
   };
 
-  const renderSubtask = ({ item }: { item: ITask }) => {
+  const renderSubtask = ({ item }: { item: Task }) => {
     return (
       <TouchableOpacity
         style={[

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -38,32 +37,39 @@ const GamifiedHomeScreen: React.FC = () => {
     // 親なしのタスクのみ表示（サブタスクは親タスクの中で表示）
     if (task.parentID) return false;
 
-    if (filter === 'project') return task.type === 'PROJECT';
+    if (filter === 'project') {
+      const isProject = task.type === 'PROJECT';
+      if (isProject) {
+        console.log(`🔍 プロジェクトフィルタ: "${task.title}" (type: ${task.type}) - 表示`);
+      }
+      return isProject;
+    }
     if (filter === 'active') return !task.isCompleted;
     if (filter === 'completed') return task.isCompleted;
     return true;
   });
 
+  // フィルタ変更時にログ出力
+  React.useEffect(() => {
+    console.log(`🔄 フィルタ変更: ${filter}`);
+    console.log(`📋 全タスク数: ${tasks.length}`);
+    console.log(`📊 プロジェクト数: ${tasks.filter(t => t.type === 'PROJECT' && !t.parentID).length}`);
+    console.log(`✅ フィルタ後のタスク数: ${filteredTasks.length}`);
+  }, [filter, tasks]);
+
   const handleAddTask = () => {
     if (userStatus.currentHP <= 0) {
-      Alert.alert(
-        '⚠️ HP不足',
-        'HPが0です。回復タスクを完了してからタスクを追加してください。'
-      );
+      window.alert('⚠️ HP不足\n\nHPが0です。回復タスクを完了してからタスクを追加してください。');
       return;
     }
     navigation.navigate('GamifiedTaskForm', {});
   };
 
   const handleDeleteTask = (id: string) => {
-    Alert.alert('削除の確認', 'このタスクを削除しますか?', [
-      { text: 'キャンセル', style: 'cancel' },
-      {
-        text: '削除',
-        style: 'destructive',
-        onPress: () => deleteTask(id),
-      },
-    ]);
+    const confirmed = window.confirm('このタスクを削除しますか?');
+    if (confirmed) {
+      deleteTask(id);
+    }
   };
 
   const handleEditTask = (task: ITask) => {
@@ -72,25 +78,21 @@ const GamifiedHomeScreen: React.FC = () => {
 
   const handlePromoteToProject = (id: string) => {
     const task = tasks.find(t => t.id === id);
-    Alert.alert(
-      'プロジェクトに昇格',
-      'このタスクをプロジェクトに昇格しますか？昇格後、サブタスクを追加できます。',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '昇格',
-          onPress: () => {
-            console.log(`昇格ボタン押下: ${task?.title}`);
-            promoteToProject(id);
-            // プロジェクトフィルターに切り替えて昇格したプロジェクトを表示
-            setTimeout(() => {
-              setFilter('project');
-              console.log('フィルターをprojectに切り替えました');
-            }, 100);
-          },
-        },
-      ]
+
+    // Web環境でも動作するようにwindow.confirmを使用
+    const confirmed = window.confirm(
+      `「${task?.title}」をプロジェクトに昇格しますか？\n昇格後、サブタスクを追加できます。`
     );
+
+    if (confirmed) {
+      console.log(`昇格ボタン押下: ${task?.title}`);
+      promoteToProject(id);
+      // プロジェクトフィルターに切り替えて昇格したプロジェクトを表示
+      setTimeout(() => {
+        setFilter('project');
+        console.log('フィルターをprojectに切り替えました');
+      }, 100);
+    }
   };
 
   const renderTaskItem = ({ item }: { item: ITask }) => {
@@ -109,12 +111,12 @@ const GamifiedHomeScreen: React.FC = () => {
     // プロジェクトの場合、サブタスク情報を取得
     const getProjectStats = () => {
       if (item.type !== 'PROJECT') return null;
-      
+
       const subtasks = tasks.filter((t) => item.childrenIDs.includes(t.id));
       const completedCount = subtasks.filter((t) => t.isCompleted).length;
       const totalCount = subtasks.length;
       const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
-      
+
       return { completedCount, totalCount, progress };
     };
 
@@ -179,8 +181,8 @@ const GamifiedHomeScreen: React.FC = () => {
                     {tag === 'recovery'
                       ? '🏃'
                       : tag === 'mental-care'
-                      ? '🧘'
-                      : '📚'}
+                        ? '🧘'
+                        : '📚'}
                   </Text>
                 ))}
               </View>

@@ -1,4 +1,4 @@
-import { ITask, IUserStatus } from '../types/Task';
+import { Task, UserStatus } from '../types/Task';
 
 /**
  * タスクサイズに応じた基本ポイント
@@ -21,7 +21,7 @@ const PRIORITY_MULTIPLIER = {
 /**
  * タスクの詳細設定に応じた未確定報酬をストック
  */
-export const calculateStakedPoints = (task: Partial<ITask>): number => {
+export const calculateStakedPoints = (task: Partial<Task>): number => {
   let points = 0;
 
   // サイズによる基本ポイント
@@ -56,8 +56,8 @@ export const calculateStakedPoints = (task: Partial<ITask>): number => {
  * タスク完了時の確定報酬を計算
  */
 export const calculateConfirmedReward = (
-  task: ITask,
-  userStatus: IUserStatus
+  task: Task,
+  userStatus: UserStatus
 ): number => {
   const baseReward = task.stakedPoints;
 
@@ -70,7 +70,7 @@ export const calculateConfirmedReward = (
   if (task.completedAt && task.createdAt) {
     const hoursElapsed =
       (task.completedAt.getTime() - task.createdAt.getTime()) / (1000 * 60 * 60);
-    
+
     // 24時間以内なら追加ボーナス
     if (hoursElapsed <= 24) {
       speedMultiplier = 1.3;
@@ -104,7 +104,7 @@ export const calculateDecompositionBonus = (
 /**
  * HP回復量を計算（回復タスク完了時）
  */
-export const calculateHPRecovery = (task: ITask): number => {
+export const calculateHPRecovery = (task: Task): number => {
   if (!task.tags || !task.tags.includes('recovery')) {
     return 0;
   }
@@ -116,7 +116,7 @@ export const calculateHPRecovery = (task: ITask): number => {
 /**
  * MP回復量を計算（メンタルケアタスク完了時）
  */
-export const calculateMPRecovery = (task: ITask): number => {
+export const calculateMPRecovery = (task: Task): number => {
   if (!task.tags || !task.tags.includes('mental-care')) {
     return 0;
   }
@@ -129,7 +129,7 @@ export const calculateMPRecovery = (task: ITask): number => {
  * HP/MPペナルティを計算（期限切れ、タスク未完了など）
  */
 export const calculatePenalty = (
-  task: ITask,
+  task: Task,
   reason: 'overdue' | 'abandoned'
 ): { hp: number; mp: number } => {
   let hpPenalty = 0;
@@ -153,7 +153,7 @@ export const calculatePenalty = (
 /**
  * INT経験値を加算すべきか判定
  */
-export const shouldGainINTExperience = (task: ITask): boolean => {
+export const shouldGainINTExperience = (task: Task): boolean => {
   // 学習系タグまたはプロジェクト完了
   return (
     (task.tags && task.tags.includes('learning')) ||
@@ -164,7 +164,7 @@ export const shouldGainINTExperience = (task: ITask): boolean => {
 /**
  * Speed経験値を加算すべきか判定
  */
-export const shouldGainSpeedExperience = (task: ITask): boolean => {
+export const shouldGainSpeedExperience = (task: Task): boolean => {
   if (!task.completedAt || !task.createdAt) return false;
 
   const hoursElapsed =
